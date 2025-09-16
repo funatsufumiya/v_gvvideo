@@ -9,6 +9,11 @@ Ported from [go-gv-video](https://github.com/funatsufumiya/go-gv-video/)
 > [!WARNING]
 > V port was almost done by GitHub Copilot. Use with care.
 
+## Dependencies
+
+- [v-lz4](https://github.com/funatsufumiya/v-lz4/)
+- [v_dxt_decoder](https://github.com/funatsufumiya/v_dxt_decoder/)
+
 ## Install
 
 ```bash
