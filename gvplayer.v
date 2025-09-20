@@ -17,10 +17,10 @@ mut:
 	state         PlayerState
 	start_time    time.Time
 	pause_time    time.Time
-	seek_time     i64
+	seek_time     f64
 	looping       bool
 	last_frame_id u32
-	last_frame_time i64
+	last_frame_time f64
 }
 
 pub fn new_gvplayer(path string) !GVPlayer {
@@ -67,7 +67,7 @@ pub fn (mut p GVPlayer) stop() {
 	p.seek_time = 0
 }
 
-pub fn (mut p GVPlayer) seek(to i64) {
+pub fn (mut p GVPlayer) seek(to f64) {
 	p.seek_time = to
 }
 
@@ -75,9 +75,9 @@ pub fn (mut p GVPlayer) update() ! {
 	if p.state != .playing {
 		return
 	}
-	elapsed := time.now() - p.start_time + p.seek_time
+	elapsed_sec := f32((time.now() - p.start_time).nanoseconds()) / 1000_000_000.0 + p.seek_time
 	fps := p.video.header.fps
-	mut frame_id := u32(f64(elapsed) / 1000_000_000.0 * f64(fps))
+	mut frame_id := u32(elapsed_sec * fps)
 	if frame_id >= p.video.header.frame_count {
 		if p.looping {
 			p.start_time = time.now()
@@ -90,7 +90,11 @@ pub fn (mut p GVPlayer) update() ! {
 	}
 	p.video.read_frame_to(frame_id, mut p.frame_buf) or { return }
 	p.last_frame_id = frame_id
-	p.last_frame_time = i64(f64(frame_id) / f64(fps) * 1000.0)
+	p.last_frame_time = f64(frame_id) / f64(fps) * 1000.0
+}
+
+pub fn (p &GVPlayer) current_frame() u32 {
+	return p.last_frame_id
 }
 
 pub fn (p &GVPlayer) current_time() f64 {
