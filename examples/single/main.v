@@ -38,9 +38,16 @@ fn main() {
 		create_window: true
 		window_title: 'GV Video (V+gg Demo)'
 		frame_fn: frame
+		keydown_fn: on_keydown
 		user_data: app
 	)
 	app.gg.run()
+}
+
+fn on_keydown(keycode gg.KeyCode, modifier gg.Modifier, mut app App) {
+	if keycode == .a {
+		app.async = !app.async
+	}
 }
 
 fn frame(mut app App) {
@@ -64,9 +71,9 @@ fn frame(mut app App) {
 	tx := (win_width - w) / 2
 	ty := (win_height - h) / 2
 	app.player.draw(mut app.gg, tx, ty, w, h)
-	app.gg.draw_text_def(10, 10, 'Async: $app.async (Aキーで切替未実装)')
+	app.gg.draw_text_def(10, 10, 'Async: $app.async (A key to toggle)')
 	video_time := app.player.current_time()
-	elapsed := f32(time.now() - app.start_time) / 1000.0
+	elapsed := f32(time.now() - app.start_time) / 1000_000_000.0
 	app.gg.draw_text_def(10, 30, 'VideoTime: ${video_time:.2f}s | Elapsed: ${elapsed:.2f}s')
 	app.gg.end()
 }

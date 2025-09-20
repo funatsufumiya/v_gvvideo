@@ -77,7 +77,7 @@ pub fn (mut p GVPlayer) update() ! {
 	}
 	elapsed := time.now() - p.start_time + p.seek_time
 	fps := p.video.header.fps
-	mut frame_id := u32(f64(elapsed) / 1000.0 * f64(fps))
+	mut frame_id := u32(f64(elapsed) / 1000_000_000.0 * f64(fps))
 	if frame_id >= p.video.header.frame_count {
 		if p.looping {
 			p.start_time = time.now()
@@ -94,7 +94,7 @@ pub fn (mut p GVPlayer) update() ! {
 }
 
 pub fn (p &GVPlayer) current_time() f64 {
-	return f64(p.last_frame_time) / 1000.0
+	return f64(p.last_frame_time) / 1000_000_000.0
 }
 
 pub fn (mut p GVPlayer) set_loop(b bool) {
