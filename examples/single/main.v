@@ -3,10 +3,13 @@ module main
 
 import gg
 import time
+import os
 import gvvideo
 
 const win_width = 800
 const win_height = 600
+
+// TODO: async
 
 struct App {
 mut:
@@ -19,7 +22,12 @@ mut:
 }
 
 fn main() {
-	gv_path := 'test_asset/test-10px.gv'
+	mut gv_path := 'test_asset/test-10px.gv'
+	if os.args.len > 1 {
+		gv_path = os.args[1]
+	} else {
+		println('[INFO] Playing the default GV video. You can specify a .gv file as an argument.')
+	}
 	mut player := gvvideo.new_gvplayer(gv_path) or {
 		panic('Failed to load GV: '+err.msg())
 	}

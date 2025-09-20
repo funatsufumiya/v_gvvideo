@@ -3,6 +3,8 @@ module gvvideo
 import time
 import gg
 
+// TODO: async
+
 pub enum PlayerState {
 	stopped
 	playing
