@@ -1,4 +1,4 @@
-module main
+module test_gvvideo_read_header
 
 import os
 import gvvideo
