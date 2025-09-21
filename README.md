@@ -4,7 +4,7 @@
 
 GV Video ([Extreme Gpu Friendly Video Format](https://github.com/Ushio/ofxExtremeGpuVideo)) Decoder for V-lang 
 
-Compressed texture GPU streaming is supported (DXT1/DXT3/DXT5).
+Compressed texture GPU streaming is supported (DXT1/DXT3/DXT5). You can also use alpha channel (opacity).
 
 Ported from [go-gv-video](https://github.com/funatsufumiya/go-gv-video/)
 
