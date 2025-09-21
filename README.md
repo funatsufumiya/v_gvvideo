@@ -32,5 +32,11 @@ $ v test ~/.vmodules/gvvideo
 > works without `-prod` option, but maybe slower fps
 
 ```bash
-v -prod run ~/.vmodules/gvvideo/examples/single/main.v
+$ v -prod run ~/.vmodules/gvvideo/examples/single/main.v
+
+# with your gv file
+$ v -prod run ~/.vmodules/gvvideo/examples/single/main.v [gv-file-path]
+
+# with your multiple gv files
+$ v -prod run ~/.vmodules/gvvideo/examples/multiple/main.v [dir-containing-gv-files]
 ```
