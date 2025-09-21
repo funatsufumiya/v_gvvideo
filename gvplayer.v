@@ -268,12 +268,14 @@ pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 				// pixel_format: .rgba8
 			}
 		)
+		// p.frame_image = image.id
 
 		ctx.draw_image(x, y, w, h, image)
 
 		// println("image.id: ${image.id}")
 
 		ctx.remove_cached_image_by_idx(image.id)
+
 		// gfx.destroy_image(image.simg)
 		// gfx.destroy_sampler(image.ssmp)
 	}else{
