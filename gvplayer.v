@@ -96,6 +96,47 @@ pub fn (mut p GVPlayer) seek(to f64) {
 	p.seek_time = to
 }
 
+// pub fn (mut img Image) update_pixel_data(buf &u8) {
+// 	mut data := gfx.ImageData{}
+// 	data.subimage[0][0].ptr = buf
+// 	data.subimage[0][0].size = usize(img.width * img.height * img.nr_channels)
+// 	gfx.update_image(img.simg, &data)
+// }
+
+fn new_streaming_image(mut ctx gg.Context, w int, h int, channels int, buf &u8, buf_len usize, sicfg gg.StreamingImageConfig) int {
+	mut img := gg.Image{}
+	img.width = w
+	img.height = h
+	img.nr_channels = channels // 4 bytes per pixel for .rgba8, see pixel_format
+	mut img_desc := gfx.ImageDesc{
+		width:        img.width
+		height:       img.height
+		pixel_format: sicfg.pixel_format
+		num_slices:   1
+		num_mipmaps:  1
+		usage:        .stream
+		label:        &char(img.path.str)
+	}
+	img_desc.data.subimage[0][0] = gfx.Range{
+		ptr:  buf
+		size: buf_len
+	}
+	img.simg = gfx.make_image(&img_desc)
+
+	mut smp_desc := gfx.SamplerDesc{
+		wrap_u:     sicfg.wrap_u // SAMPLER
+		wrap_v:     sicfg.wrap_v
+		min_filter: sicfg.min_filter
+		mag_filter: sicfg.mag_filter
+	}
+
+	img.ssmp = gfx.make_sampler(&smp_desc)
+	img.simg_ok = true
+	img.ok = true
+	img_idx := ctx.cache_image(img)
+	return img_idx
+}
+
 pub fn (mut p GVPlayer) update() ! {
 	if p.state != .playing {
 		return
@@ -130,7 +171,16 @@ pub fn (mut p GVPlayer) update() ! {
 		}
 	}else{
 		// println("non-async loop")
-		p.video.read_frame_to(frame_id, mut p.frame_buf) or { return }
+		if p.use_compressed {
+			width := int(p.video.header.width)
+			height := int(p.video.header.height)
+			if p.frame_buf.len == width * height * 4 {
+				p.frame_buf = []u8{len: int(p.video.header.frame_bytes)}
+			}
+			p.video.read_frame_compressed_to(frame_id, mut p.frame_buf) or { return }
+		}else {
+			p.video.read_frame_to(frame_id, mut p.frame_buf) or { return }
+		}
 		p.last_frame_id = frame_id
 		p.last_frame_time = f64(frame_id) / f64(fps) * 1000.0
 	}
@@ -185,24 +235,32 @@ pub fn (p &GVPlayer) get_pixel_format() gfx.PixelFormat {
 pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 	p.mutex.lock()
 	if p.frame_image == 0 {
-		// if p.use_compressed {
-		// 	p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
-		// 		pixel_format: p.get_pixel_format()
-		// 		// pixel_format: .rgba8
-		// 	})
-		// 	// println("pixel_format: ${p.get_pixel_format()}")
-		// 	// ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
+		if p.use_compressed {
+			p.frame_image = new_streaming_image(
+				mut ctx, int(p.video.header.width), int(p.video.header.height), 4,
+				p.frame_buf.data, usize(p.frame_buf.len),
+				gg.StreamingImageConfig{
+					pixel_format: p.get_pixel_format()
+					// pixel_format: .rgba8
+				}
+			)
+			// println("pixel_format: ${p.get_pixel_format()}")
+			// ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
 
-		// }else {
+		}else {
 			p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
 				// pixel_format: p.get_pixel_format()
 				pixel_format: .rgba8
 			})
 			// println("pixel_format: ${p.get_pixel_format()}")
 			ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
-		// }
+		}
 	} else {
-		ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
+		if p.use_compressed {
+
+		}else{
+			ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
+		}
 	}
 	p.mutex.unlock()
 	// println("p.frame_image: ${p.frame_image}")
@@ -233,12 +291,18 @@ pub fn (mut p GVPlayer) async_update_loop() {
 			}
 		}
 		if frame_id != p.last_frame_id && frame_id < p.video.header.frame_count {
-			width := int(p.video.header.width)
-			height := int(p.video.header.height)
-			mut buf := []u8{len: width * height * 4}
-			p.video.read_frame_to(frame_id, mut buf) or { continue }
-			if p.frame_ch.len == 0 {
-				p.frame_ch <- buf
+			// width := int(p.video.header.width)
+			// height := int(p.video.header.height)
+			if p.use_compressed {
+				buf := p.video.read_frame_compressed(frame_id) or { continue }
+				if p.frame_ch.len == 0 {
+					p.frame_ch <- buf
+				}
+			}else{
+				buf := p.video.read_frame(frame_id) or { continue }
+				if p.frame_ch.len == 0 {
+					p.frame_ch <- buf
+				}
 			}
 			p.last_frame_id = frame_id
 		}
