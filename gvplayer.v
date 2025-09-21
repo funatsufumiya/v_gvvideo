@@ -106,7 +106,8 @@ pub fn (p &GVPlayer) current_frame() u32 {
 }
 
 pub fn (p &GVPlayer) current_time() f64 {
-	return f64(p.last_frame_time) / 1000_000_000.0
+	// return f64(p.last_frame_time) / 1000_000_000.0
+    return p.last_frame_time / 1000.0
 }
 
 pub fn (mut p GVPlayer) set_loop(b bool) {

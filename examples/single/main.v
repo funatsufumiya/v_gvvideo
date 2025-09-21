@@ -67,6 +67,7 @@ fn frame(mut app App) {
 	}
 	app.player.update() or {
 		app.err = err.msg()
+		return
 	}
 	// scale and center
 	video_w := app.player.width()
@@ -76,8 +77,10 @@ fn frame(mut app App) {
 	scale := if scale_y < scale_x { scale_y } else { scale_x }
 	w := int(f32(video_w) * scale)
 	h := int(f32(video_h) * scale)
+	// println("w x h: ${w} x ${h}")
 	tx := (win_width - w) / 2
 	ty := (win_height - h) / 2
+	// println("x x y: ${tx} x ${ty}")
 	app.player.draw(mut app.gg, tx, ty, w, h)
 	app.gg.draw_text_def(10, 10, 'Async: $app.async (A key to toggle)')
 	video_time := app.player.current_time()
