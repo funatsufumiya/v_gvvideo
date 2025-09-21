@@ -1,7 +1,5 @@
 # v_gvvideo
 
-WIP
-
 GV Video Decoder for V-lang 
 
 Ported from [go-gv-video](https://github.com/funatsufumiya/go-gv-video/)
