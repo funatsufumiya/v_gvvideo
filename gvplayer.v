@@ -21,7 +21,7 @@ mut:
 	seek_time     f64
 	looping       bool
 	async         bool
-	use_compressed bool
+	use_compressed bool // currently not used
 	is_async_running bool
 	frame_ch      chan []u8
 	stop_ch       chan bool
@@ -179,13 +179,22 @@ pub fn (p &GVPlayer) get_pixel_format() gfx.PixelFormat {
 
 pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 	if p.frame_image == 0 {
-		// p.frame_image = ctx.create_image_from_byte_array(p.frame_buf) or { return }
-		p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
-			// pixel_format: p.get_pixel_format()
-			pixel_format: .rgba8
-		})
-		// println("pixel_format: ${p.get_pixel_format()}")
-		ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
+		if p.use_compressed {
+			p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
+				pixel_format: p.get_pixel_format()
+				// pixel_format: .rgba8
+			})
+			// println("pixel_format: ${p.get_pixel_format()}")
+			// ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
+
+		}else {
+			p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
+				// pixel_format: p.get_pixel_format()
+				pixel_format: .rgba8
+			})
+			// println("pixel_format: ${p.get_pixel_format()}")
+			ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
+		}
 	} else {
 		ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
 	}
