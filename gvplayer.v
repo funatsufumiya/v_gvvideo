@@ -100,6 +100,7 @@ pub fn (mut p GVPlayer) update() ! {
 			p.start_time = time.now()
 			p.seek_time = 0
 			frame_id = 0
+			p.last_frame_id = 0
 		} else {
 			p.state = .stopped
 			return
@@ -171,7 +172,18 @@ pub fn (mut p GVPlayer) async_update_loop() {
 		}
 		elapsed_sec := f32((time.now() - p.start_time).nanoseconds()) / 1000_000_000.0 + p.seek_time
 		fps := p.video.header.fps
-		frame_id := u32(elapsed_sec * fps)
+		mut frame_id := u32(elapsed_sec * fps)
+		if frame_id >= p.video.header.frame_count {
+			if p.looping {
+				p.start_time = time.now()
+				p.seek_time = 0
+				frame_id = 0
+				p.last_frame_id = 0
+			} else {
+				p.state = .stopped
+				return
+			}
+		}
 		if frame_id != p.last_frame_id && frame_id < p.video.header.frame_count {
 			width := int(p.video.header.width)
 			height := int(p.video.header.height)
@@ -180,6 +192,7 @@ pub fn (mut p GVPlayer) async_update_loop() {
 			if p.frame_ch.len == 0 {
 				p.frame_ch <- buf
 			}
+			p.last_frame_id = frame_id
 		}
 		time.sleep(5 * time.millisecond)
 	}
