@@ -3,6 +3,7 @@ module gvvideo
 import time
 import gg
 import sokol.gfx
+import sync
 
 pub enum PlayerState {
 	stopped
@@ -27,6 +28,7 @@ mut:
 	stop_ch       chan bool
 	last_frame_id u32
 	last_frame_time f64
+	mutex         &sync.Mutex
 }
 
 pub fn new_gvplayer(path string) !GVPlayer {
@@ -49,6 +51,7 @@ pub fn new_gvplayer_with_option(path string, async bool, use_compressed bool) !G
 		use_compressed: use_compressed
 		frame_ch: chan []u8{cap: 1}
 		stop_ch: chan bool{}
+		mutex: sync.new_mutex()
 	}
 }
 
@@ -118,7 +121,9 @@ pub fn (mut p GVPlayer) update() ! {
 		if frame_id != p.last_frame_id {
 			if p.frame_ch.len > 0 {
 				pix := <-p.frame_ch
+				p.mutex.lock()
 				unsafe { p.frame_buf = pix.clone() }
+				p.mutex.unlock()
 				p.last_frame_id = frame_id
 				p.last_frame_time = f64(frame_id) / f64(fps) * 1000.0
 			}
@@ -178,6 +183,7 @@ pub fn (p &GVPlayer) get_pixel_format() gfx.PixelFormat {
 }
 
 pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
+	p.mutex.lock()
 	if p.frame_image == 0 {
 		// if p.use_compressed {
 		// 	p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
@@ -198,6 +204,7 @@ pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 	} else {
 		ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
 	}
+	p.mutex.unlock()
 	// println("p.frame_image: ${p.frame_image}")
 	ctx.draw_image_by_id(x, y, w, h, p.frame_image)
 }
