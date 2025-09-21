@@ -93,12 +93,17 @@ pub fn (mut p GVPlayer) update() ! {
 		}
 	}
 	if p.frame_buf.len > 0 {
-		p.video.read_frame_compressed_to(frame_id, mut p.frame_buf) or { return }
+		// p.video.read_frame_compressed_to(frame_id, mut p.frame_buf) or { return }
+		p.video.read_frame_to(frame_id, mut p.frame_buf) or { return }
 	} else {
-		p.frame_buf = p.video.read_frame_compressed(frame_id) or { return }
+		// p.frame_buf = p.video.read_frame_compressed(frame_id) or { return }
+		p.frame_buf = p.video.read_frame(frame_id) or { return }
 	}
 	p.last_frame_id = frame_id
 	p.last_frame_time = f64(frame_id) / f64(fps) * 1000.0
+
+	// println("frame_buf.len ${p.frame_buf.len}")
+	// println("frame_buf ${p.frame_buf[1..100]}")
 }
 
 pub fn (p &GVPlayer) current_frame() u32 {
@@ -131,8 +136,10 @@ pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 	if p.frame_image == 0 {
 		// p.frame_image = ctx.create_image_from_byte_array(p.frame_buf) or { return }
 		p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
-			pixel_format: p.get_pixel_format()
+			// pixel_format: p.get_pixel_format()
+			pixel_format: .rgba8
 		})
+		// println("pixel_format: ${p.get_pixel_format()}")
 		ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
 	} else {
 		ctx.update_pixel_data(p.frame_image, p.frame_buf.data)

@@ -40,7 +40,7 @@ fn main() {
 		start_time: time.now()
 	}
 	app.gg = gg.new_context(
-		bg_color: gg.white
+		bg_color: gg.gray
 		width: win_width
 		height: win_height
 		create_window: true
@@ -60,6 +60,7 @@ fn on_keydown(keycode gg.KeyCode, modifier gg.Modifier, mut app App) {
 
 fn frame(mut app App) {
 	app.gg.begin()
+
 	if app.err != '' {
 		app.gg.draw_text_def(20, 20, 'Error: '+app.err)
 		app.gg.end()
@@ -81,10 +82,13 @@ fn frame(mut app App) {
 	tx := (win_width - w) / 2
 	ty := (win_height - h) / 2
 	// println("x x y: ${tx} x ${ty}")
+
 	app.player.draw(mut app.gg, tx, ty, w, h)
-	app.gg.draw_text_def(10, 10, 'Async: $app.async (A key to toggle)')
+
+	app.gg.draw_text_def(10, 10, 'Async (not implemented): $app.async (A key to toggle)')
 	video_time := app.player.current_time()
 	elapsed := f32((time.now() - app.start_time).nanoseconds()) / 1000_000_000.0
 	app.gg.draw_text_def(10, 30, 'VideoTime: ${video_time:.2f}s | Elapsed: ${elapsed:.2f}s')
+
 	app.gg.end()
 }
