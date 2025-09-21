@@ -136,5 +136,6 @@ pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 	} else {
 		ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
 	}
+	// println("p.frame_image: ${p.frame_image}")
 	ctx.draw_image_by_id(x, y, w, h, p.frame_image)
 }
