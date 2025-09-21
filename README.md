@@ -26,8 +26,8 @@ $ v test ~/.vmodules/gvvideo
 
 ## Example (using gg)
 
-> [!WARNING]
-> if without `-prod` option, very slow decoding
+> [!NOTE]
+> works without `-prod` option, but maybe slower fps
 
 ```bash
 v -prod run ~/.vmodules/gvvideo/examples/single/main.v
