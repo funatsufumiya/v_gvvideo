@@ -54,8 +54,14 @@ fn main() {
 
 fn on_keydown(keycode gg.KeyCode, modifier gg.Modifier, mut app App) {
 	if keycode == .a {
-		app.async = !app.async
+		app.toggle_async()
 	}
+}
+
+fn (mut app App) toggle_async() {
+	app.async = !app.async
+	app.player.set_async(app.async)
+	app.start_time = time.now()
 }
 
 fn frame(mut app App) {

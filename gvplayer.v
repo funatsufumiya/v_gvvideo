@@ -21,6 +21,7 @@ mut:
 	seek_time     f64
 	looping       bool
 	async         bool
+	is_async_running bool
 	frame_ch      chan []u8
 	stop_ch       chan bool
 	last_frame_id u32
@@ -63,7 +64,8 @@ pub fn (mut p GVPlayer) play() {
 	}
 	p.state = .playing
 	p.start_time = time.now()
-	if p.async {
+	if p.async && !p.is_async_running {
+		p.is_async_running = true
 		go p.async_update_loop()
 	}
 }
@@ -79,8 +81,9 @@ pub fn (mut p GVPlayer) pause() {
 pub fn (mut p GVPlayer) stop() {
 	p.state = .stopped
 	p.seek_time = 0
-	if p.async {
+	if p.async && p.is_async_running {
 		p.stop_ch <- true
+		p.is_async_running = false
 	}
 }
 
@@ -95,6 +98,7 @@ pub fn (mut p GVPlayer) update() ! {
 	elapsed_sec := f32((time.now() - p.start_time).nanoseconds()) / 1000_000_000.0 + p.seek_time
 	fps := p.video.header.fps
 	mut frame_id := u32(elapsed_sec * fps)
+
 	if frame_id >= p.video.header.frame_count {
 		if p.looping {
 			p.start_time = time.now()
@@ -106,7 +110,9 @@ pub fn (mut p GVPlayer) update() ! {
 			return
 		}
 	}
+
 	if p.async {
+		// println("async loop")
 		if frame_id != p.last_frame_id {
 			if p.frame_ch.len > 0 {
 				pix := <-p.frame_ch
@@ -115,11 +121,12 @@ pub fn (mut p GVPlayer) update() ! {
 				p.last_frame_time = f64(frame_id) / f64(fps) * 1000.0
 			}
 		}
-		return
+	}else{
+		// println("non-async loop")
+		p.video.read_frame_to(frame_id, mut p.frame_buf) or { return }
+		p.last_frame_id = frame_id
+		p.last_frame_time = f64(frame_id) / f64(fps) * 1000.0
 	}
-	p.video.read_frame_to(frame_id, mut p.frame_buf) or { return }
-	p.last_frame_id = frame_id
-	p.last_frame_time = f64(frame_id) / f64(fps) * 1000.0
 }
 
 pub fn (p &GVPlayer) current_frame() u32 {
@@ -129,6 +136,26 @@ pub fn (p &GVPlayer) current_frame() u32 {
 pub fn (p &GVPlayer) current_time() f64 {
 	// return f64(p.last_frame_time) / 1000_000_000.0
     return p.last_frame_time / 1000.0
+}
+
+pub fn (mut p GVPlayer) set_async(async bool) {
+	if p.async == async {
+		return
+	}
+	p.async = async
+	if async {
+		if !p.is_async_running {
+			p.is_async_running = true
+			if p.state == .playing {
+				go p.async_update_loop()
+			}
+		}
+	} else {
+		if p.is_async_running {
+			p.stop_ch <- true
+			p.is_async_running = false
+		}
+	}
 }
 
 pub fn (mut p GVPlayer) set_loop(b bool) {
@@ -166,8 +193,10 @@ pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 
 pub fn (mut p GVPlayer) async_update_loop() {
 	for {
+		start_loop_time := time.now()
 		if p.stop_ch.len > 0 {
 			_ := <-p.stop_ch
+			p.is_async_running = false
 			return
 		}
 		elapsed_sec := f32((time.now() - p.start_time).nanoseconds()) / 1000_000_000.0 + p.seek_time
@@ -181,6 +210,7 @@ pub fn (mut p GVPlayer) async_update_loop() {
 				p.last_frame_id = 0
 			} else {
 				p.state = .stopped
+				p.is_async_running = false
 				return
 			}
 		}
@@ -194,6 +224,11 @@ pub fn (mut p GVPlayer) async_update_loop() {
 			}
 			p.last_frame_id = frame_id
 		}
-		time.sleep(5 * time.millisecond)
+		elapsed_in_loop := time.now() - start_loop_time
+		target_frame_time_ms := 1000.0 / f64(fps)
+		sleep_time_ms := target_frame_time_ms - elapsed_in_loop.milliseconds()
+		if sleep_time_ms > 0 {
+			time.sleep(time.Duration(i64(sleep_time_ms * 1000000.0)))
+		}
 	}
 }
