@@ -104,35 +104,45 @@ pub fn (mut p GVPlayer) seek(to f64) {
 // }
 
 fn new_streaming_image(mut ctx gg.Context, w int, h int, channels int, buf &u8, buf_len usize, sicfg gg.StreamingImageConfig) int {
-	mut img := gg.Image{}
-	img.width = w
-	img.height = h
-	img.nr_channels = channels // 4 bytes per pixel for .rgba8, see pixel_format
-	mut img_desc := gfx.ImageDesc{
-		width:        img.width
-		height:       img.height
-		pixel_format: sicfg.pixel_format
-		num_slices:   1
-		num_mipmaps:  1
-		usage:        .stream
-		label:        &char(img.path.str)
-	}
-	img_desc.data.subimage[0][0] = gfx.Range{
+	mut data := C.sg_image_data {}
+	data.subimage[0][0] = gfx.Range{
 		ptr:  buf
 		size: buf_len
 	}
-	img.simg = gfx.make_image(&img_desc)
+	img_desc := gfx.ImageDesc{
+		width:        w
+		height:       h
+		pixel_format: sicfg.pixel_format
+		num_slices:   1
+		num_mipmaps:  1
+		usage:        .immutable
+		label:        &char("temp".str)
+		data:         data
+	}
 
-	mut smp_desc := gfx.SamplerDesc{
+	smp_desc := gfx.SamplerDesc{
 		wrap_u:     sicfg.wrap_u // SAMPLER
 		wrap_v:     sicfg.wrap_v
 		min_filter: sicfg.min_filter
 		mag_filter: sicfg.mag_filter
 	}
 
-	img.ssmp = gfx.make_sampler(&smp_desc)
-	img.simg_ok = true
-	img.ok = true
+	img := gg.Image{
+		simg: gfx.make_image(&img_desc)
+		ssmp: gfx.make_sampler(&smp_desc)
+		width: w
+		height: h
+		nr_channels: channels
+		simg_ok: true
+		ok: true
+	}
+	// img.simg = gfx.make_image(&img_desc)
+	// img.ssmp = gfx.make_sampler(&smp_desc)
+	// img.width = w
+	// img.height = h
+	// img.nr_channels = channels // 4 bytes per pixel for .rgba8, see pixel_format
+	// img.simg_ok = true
+	// img.ok = true
 	img_idx := ctx.cache_image(img)
 	return img_idx
 }
