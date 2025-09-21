@@ -4,8 +4,6 @@ import time
 import gg
 import sokol.gfx
 
-// TODO: async
-
 pub enum PlayerState {
 	stopped
 	playing
@@ -22,16 +20,22 @@ mut:
 	pause_time    time.Time
 	seek_time     f64
 	looping       bool
+	async         bool
+	frame_ch      chan []u8
+	stop_ch       chan bool
 	last_frame_id u32
 	last_frame_time f64
 }
 
 pub fn new_gvplayer(path string) !GVPlayer {
+	return new_gvplayer_with_option(path, true)
+}
+
+pub fn new_gvplayer_with_option(path string, async bool) !GVPlayer {
 	mut video := gvvideo.load_gvvideo(path)!
-	// width := int(video.header.width)
-	// height := int(video.header.height)
-	frame_buf := []u8{}
-	// frame_image := gg.Image{ id: 0, width: width, height: height }
+	width := int(video.header.width)
+	height := int(video.header.height)
+	frame_buf := []u8{len: width * height * 4}
 	frame_image := 0
 	return GVPlayer{
 		video: video
@@ -39,6 +43,9 @@ pub fn new_gvplayer(path string) !GVPlayer {
 		frame_buf: frame_buf
 		state: .stopped
 		looping: false
+		async: async
+		frame_ch: chan []u8{cap: 1}
+		stop_ch: chan bool{}
 	}
 }
 
@@ -56,6 +63,9 @@ pub fn (mut p GVPlayer) play() {
 	}
 	p.state = .playing
 	p.start_time = time.now()
+	if p.async {
+		go p.async_update_loop()
+	}
 }
 
 pub fn (mut p GVPlayer) pause() {
@@ -69,6 +79,9 @@ pub fn (mut p GVPlayer) pause() {
 pub fn (mut p GVPlayer) stop() {
 	p.state = .stopped
 	p.seek_time = 0
+	if p.async {
+		p.stop_ch <- true
+	}
 }
 
 pub fn (mut p GVPlayer) seek(to f64) {
@@ -92,18 +105,20 @@ pub fn (mut p GVPlayer) update() ! {
 			return
 		}
 	}
-	if p.frame_buf.len > 0 {
-		// p.video.read_frame_compressed_to(frame_id, mut p.frame_buf) or { return }
-		p.video.read_frame_to(frame_id, mut p.frame_buf) or { return }
-	} else {
-		// p.frame_buf = p.video.read_frame_compressed(frame_id) or { return }
-		p.frame_buf = p.video.read_frame(frame_id) or { return }
+	if p.async {
+		if frame_id != p.last_frame_id {
+			if p.frame_ch.len > 0 {
+				pix := <-p.frame_ch
+				unsafe { p.frame_buf = pix.clone() }
+				p.last_frame_id = frame_id
+				p.last_frame_time = f64(frame_id) / f64(fps) * 1000.0
+			}
+		}
+		return
 	}
+	p.video.read_frame_to(frame_id, mut p.frame_buf) or { return }
 	p.last_frame_id = frame_id
 	p.last_frame_time = f64(frame_id) / f64(fps) * 1000.0
-
-	// println("frame_buf.len ${p.frame_buf.len}")
-	// println("frame_buf ${p.frame_buf[1..100]}")
 }
 
 pub fn (p &GVPlayer) current_frame() u32 {
@@ -146,4 +161,26 @@ pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 	}
 	// println("p.frame_image: ${p.frame_image}")
 	ctx.draw_image_by_id(x, y, w, h, p.frame_image)
+}
+
+pub fn (mut p GVPlayer) async_update_loop() {
+	for {
+		if p.stop_ch.len > 0 {
+			_ := <-p.stop_ch
+			return
+		}
+		elapsed_sec := f32((time.now() - p.start_time).nanoseconds()) / 1000_000_000.0 + p.seek_time
+		fps := p.video.header.fps
+		frame_id := u32(elapsed_sec * fps)
+		if frame_id != p.last_frame_id && frame_id < p.video.header.frame_count {
+			width := int(p.video.header.width)
+			height := int(p.video.header.height)
+			mut buf := []u8{len: width * height * 4}
+			p.video.read_frame_to(frame_id, mut buf) or { continue }
+			if p.frame_ch.len == 0 {
+				p.frame_ch <- buf
+			}
+		}
+		time.sleep(5 * time.millisecond)
+	}
 }
