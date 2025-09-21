@@ -3,6 +3,7 @@ module gvvideo
 import time
 import gg
 import sokol.gfx
+// import sokol.sgl
 import sync
 
 pub enum PlayerState {
@@ -30,6 +31,8 @@ mut:
 	last_frame_time f64
 	mutex         &sync.Mutex
 	immutable_sampler &gfx.Sampler = unsafe { nil }
+	image_compressed_allocated bool
+	image_compressed gg.Image
 }
 
 pub fn new_gvplayer(path string) !GVPlayer {
@@ -108,6 +111,29 @@ pub fn (mut p GVPlayer) seek(to f64) {
 // 	gfx.update_image(img.simg, &data)
 // }
 
+// fn draw_gfx_image(x int, y int, w int, h int, image gfx.Image, sampler gfx.Sampler){
+
+// 	// tr_x := x / image.width
+// 	// tr_y := -y / image.height
+// 	sgl.push_matrix()
+// 	// sgl.translate(tr_x, tr_y, 0.0)
+// 	sgl.translate(x, y, 0.0)
+
+// 	sgl.enable_texture()
+// 	sgl.texture(image, sampler)
+
+// 	mut c := [u8(255), 255, 255]!
+// 	sgl.begin_quads()
+// 	sgl.v2f_t2f_c3b(-w, -h, 0, 0, c[0], c[1], c[2])
+// 	sgl.v2f_t2f_c3b(w, -h, 1, 0, c[0], c[1], c[2])
+// 	sgl.v2f_t2f_c3b(w, h, 1, 1, c[0], c[1], c[2])
+// 	sgl.v2f_t2f_c3b(-w, h, 0, 1, c[0], c[1], c[2])
+// 	sgl.end()
+
+// 	sgl.pop_matrix()
+// }
+
+// fn (mut p GVPlayer) new_immutable_image(mut ctx gg.Context, w int, h int, channels int, buf &u8, buf_len usize, sicfg gg.StreamingImageConfig) (gfx.Image, gfx.Sampler) {
 fn (mut p GVPlayer) new_immutable_image(mut ctx gg.Context, w int, h int, channels int, buf &u8, buf_len usize, sicfg gg.StreamingImageConfig) gg.Image {
 	mut data := C.sg_image_data {}
 	data.subimage[0][0] = gfx.Range{
@@ -147,6 +173,7 @@ fn (mut p GVPlayer) new_immutable_image(mut ctx gg.Context, w int, h int, channe
 		simg_ok: true
 		ok: true
 	}
+
 	// img.simg = gfx.make_image(&img_desc)
 	// img.ssmp = gfx.make_sampler(&smp_desc)
 	// img.width = w
@@ -156,10 +183,13 @@ fn (mut p GVPlayer) new_immutable_image(mut ctx gg.Context, w int, h int, channe
 	// img.ok = true
 
 	// img_idx := ctx.cache_image(img)
+
 	ctx.cache_image(img)
+
 	// return img_idx
 
 	return img
+	// return gfx.make_image(&img_desc), *p.immutable_sampler
 }
 
 pub fn (mut p GVPlayer) update() ! {
@@ -260,7 +290,13 @@ pub fn (p &GVPlayer) get_pixel_format() gfx.PixelFormat {
 pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 	p.mutex.lock()
 	if p.use_compressed {
-		image := p.new_immutable_image(
+		if p.image_compressed_allocated {
+			gfx.destroy_image(p.image_compressed.simg)
+			unsafe { p.image_compressed.free() }
+		}
+
+		// gfx_image, sampler := p.new_immutable_image(
+		p.image_compressed = p.new_immutable_image(
 			mut ctx, int(p.video.header.width), int(p.video.header.height), 4,
 			p.frame_buf.data, usize(p.frame_buf.len),
 			gg.StreamingImageConfig{
@@ -268,16 +304,20 @@ pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 				// pixel_format: .rgba8
 			}
 		)
+		p.image_compressed_allocated = true
 		// p.frame_image = image.id
 
-		ctx.draw_image(x, y, w, h, image)
+		ctx.draw_image(x, y, w, h, p.image_compressed)
+
+		// draw_gfx_image(x, y, w, h, gfx_image, sampler)
 
 		// println("image.id: ${image.id}")
 
-		ctx.remove_cached_image_by_idx(image.id)
+		ctx.remove_cached_image_by_idx(p.image_compressed.id)
 
-		// gfx.destroy_image(image.simg)
-		// gfx.destroy_sampler(image.ssmp)
+		// gfx.destroy_image(p.image_compressed.simg)
+		// gfx.destroy_image(gfx_image)
+		// gfx.destroy_sampler(sampler)
 	}else{
 		if p.frame_image == 0 {
 			p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
