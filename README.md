@@ -1,5 +1,7 @@
 # v_gvvideo
 
+![docs/screenshot.png](docs/screenshot.png)
+
 GV Video ([Extreme Gpu Friendly Video Format](https://github.com/Ushio/ofxExtremeGpuVideo)) Decoder for V-lang 
 
 Compressed texture GPU streaming is supported (DXT1/DXT3/DXT5).
