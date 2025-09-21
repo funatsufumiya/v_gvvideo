@@ -25,3 +25,12 @@ $ git clone https://github.com/funatsufumiya/v_gvvideo ~/.vmodules/gvvideo
 ```bash
 $ v test ~/.vmodules/gvvideo
 ```
+
+## Example (using gg)
+
+> [!WARNING]
+> if without `-prod` option, very slow decoding
+
+```bash
+v -prod run ~/.vmodules/gvvideo/examples/single/main.v
+```
