@@ -69,21 +69,27 @@ pub fn load_gvvideo(path string) !GVVideo {
 
 // Read compressed frame (LZ4 decompress only, no DXT decode)
 pub fn (mut v GVVideo) read_frame_compressed(frame_id u32) ![]u8 {
+	mut buf := []u8{len: int(v.header.frame_bytes)}
+	v.read_frame_compressed_to(frame_id, mut buf) or { return error(err.msg()) }
+	return buf
+}
+
+// Read compressed frame to buffer (LZ4 decompress only, no DXT decode)
+pub fn (mut v GVVideo) read_frame_compressed_to(frame_id u32, mut buf []u8) ! {
 	if frame_id >= v.header.frame_count {
 		return error('end of video')
 	}
 	block := v.address_size_blocks[frame_id]
 	compressed := v.file.read_bytes_at(int(block.size), block.address)
-	width := int(v.header.width)
-	height := int(v.header.height)
-	uncompressed_size := width * height * 4
-	mut decompressed := []u8{len: uncompressed_size, init: 0}
-	decompressed_size := lz4.lz_4_decompress_safe(&u8(compressed.data), &u8(decompressed.data),
+	uncompressed_size := int(v.header.frame_bytes)
+	if buf.len < uncompressed_size {
+		return error('buffer too small')
+	}
+	decompressed_size := lz4.lz_4_decompress_safe(&u8(compressed.data), &u8(buf.data),
 		compressed.len, uncompressed_size)
 	if decompressed_size < 0 {
 		return error('LZ4 decompress failed')
 	}
-	return decompressed[..uncompressed_size]
 }
 
 // Read and decode frame to RGBA buffer
@@ -95,7 +101,7 @@ pub fn (mut v GVVideo) read_frame_to(frame_id u32, mut buf []u8) ! {
 	compressed := v.file.read_bytes_at(int(block.size), block.address)
 	width := int(v.header.width)
 	height := int(v.header.height)
-	uncompressed_size := width * height * 4
+	uncompressed_size := int(v.header.frame_bytes)
 	mut decompressed := []u8{len: uncompressed_size, init: 0}
 	decompressed_size := lz4.lz_4_decompress_safe(&u8(compressed.data), &u8(decompressed.data),
 		compressed.len, uncompressed_size)

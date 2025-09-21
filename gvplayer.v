@@ -2,6 +2,7 @@ module gvvideo
 
 import time
 import gg
+import sokol.gfx
 
 // TODO: async
 
@@ -14,7 +15,7 @@ pub enum PlayerState {
 pub struct GVPlayer {
 mut:
 	video         gvvideo.GVVideo
-	frame_image   gg.Image
+	frame_image   int // gg.Image
 	frame_buf     []u8
 	state         PlayerState
 	start_time    time.Time
@@ -27,10 +28,11 @@ mut:
 
 pub fn new_gvplayer(path string) !GVPlayer {
 	mut video := gvvideo.load_gvvideo(path)!
-	width := int(video.header.width)
-	height := int(video.header.height)
-	frame_buf := []u8{len: width * height * 4}
-	frame_image := gg.Image{ id: 0, width: width, height: height }
+	// width := int(video.header.width)
+	// height := int(video.header.height)
+	frame_buf := []u8{}
+	// frame_image := gg.Image{ id: 0, width: width, height: height }
+	frame_image := 0
 	return GVPlayer{
 		video: video
 		frame_image: frame_image
@@ -90,7 +92,11 @@ pub fn (mut p GVPlayer) update() ! {
 			return
 		}
 	}
-	p.video.read_frame_to(frame_id, mut p.frame_buf) or { return }
+	if p.frame_buf.len > 0 {
+		p.video.read_frame_compressed_to(frame_id, mut p.frame_buf) or { return }
+	} else {
+		p.frame_buf = p.video.read_frame_compressed(frame_id) or { return }
+	}
 	p.last_frame_id = frame_id
 	p.last_frame_time = f64(frame_id) / f64(fps) * 1000.0
 }
@@ -111,11 +117,24 @@ pub fn (p &GVPlayer) get_loop() bool {
 	return p.looping
 }
 
-pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
-	if p.frame_image.id == 0 {
-		p.frame_image = ctx.create_image_from_byte_array(p.frame_buf) or { return }
-	} else {
-		p.frame_image.update_pixel_data(p.frame_buf.data)
+pub fn (p &GVPlayer) get_pixel_format() gfx.PixelFormat {
+	match p.video.header.format {
+		gvvideo.gv_format_dxt1 { return .bc1_rgba }
+		gvvideo.gv_format_dxt3 { return .bc2_rgba }
+		gvvideo.gv_format_dxt5 { return .bc3_rgba }
+		else { return .bc3_rgba }
 	}
-	ctx.draw_image(x, y, w, h, p.frame_image)
+}
+
+pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
+	if p.frame_image == 0 {
+		// p.frame_image = ctx.create_image_from_byte_array(p.frame_buf) or { return }
+		p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
+			pixel_format: p.get_pixel_format()
+		})
+		ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
+	} else {
+		ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
+	}
+	ctx.draw_image_by_id(x, y, w, h, p.frame_image)
 }
