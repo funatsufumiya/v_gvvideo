@@ -28,7 +28,7 @@ fn main() {
 	} else {
 		println('[INFO] Playing the default GV video. You can specify a .gv file as an argument.')
 	}
-	mut player := gvvideo.new_gvplayer_with_option(gv_path, true, false) or {
+	mut player := gvvideo.new_gvplayer_with_option(gv_path, false, false) or {
 		panic('Failed to load GV: '+err.msg())
 	}
 	player.set_loop(true)

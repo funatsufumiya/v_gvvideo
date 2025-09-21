@@ -32,7 +32,7 @@ mut:
 }
 
 pub fn new_gvplayer(path string) !GVPlayer {
-	return new_gvplayer_with_option(path, true, false)
+	return new_gvplayer_with_option(path, false, false)
 }
 
 pub fn new_gvplayer_with_option(path string, async bool, use_compressed bool) !GVPlayer {
