@@ -179,22 +179,22 @@ pub fn (p &GVPlayer) get_pixel_format() gfx.PixelFormat {
 
 pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 	if p.frame_image == 0 {
-		if p.use_compressed {
-			p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
-				pixel_format: p.get_pixel_format()
-				// pixel_format: .rgba8
-			})
-			// println("pixel_format: ${p.get_pixel_format()}")
-			// ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
+		// if p.use_compressed {
+		// 	p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
+		// 		pixel_format: p.get_pixel_format()
+		// 		// pixel_format: .rgba8
+		// 	})
+		// 	// println("pixel_format: ${p.get_pixel_format()}")
+		// 	// ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
 
-		}else {
+		// }else {
 			p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
 				// pixel_format: p.get_pixel_format()
 				pixel_format: .rgba8
 			})
 			// println("pixel_format: ${p.get_pixel_format()}")
 			ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
-		}
+		// }
 	} else {
 		ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
 	}
