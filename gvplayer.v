@@ -103,7 +103,7 @@ pub fn (mut p GVPlayer) seek(to f64) {
 // 	gfx.update_image(img.simg, &data)
 // }
 
-fn new_streaming_image(mut ctx gg.Context, w int, h int, channels int, buf &u8, buf_len usize, sicfg gg.StreamingImageConfig) int {
+fn new_imutable_image(mut ctx gg.Context, w int, h int, channels int, buf &u8, buf_len usize, sicfg gg.StreamingImageConfig) int {
 	mut data := C.sg_image_data {}
 	data.subimage[0][0] = gfx.Range{
 		ptr:  buf
@@ -246,7 +246,7 @@ pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 	p.mutex.lock()
 	if p.frame_image == 0 {
 		if p.use_compressed {
-			p.frame_image = new_streaming_image(
+			p.frame_image = new_imutable_image(
 				mut ctx, int(p.video.header.width), int(p.video.header.height), 4,
 				p.frame_buf.data, usize(p.frame_buf.len),
 				gg.StreamingImageConfig{
