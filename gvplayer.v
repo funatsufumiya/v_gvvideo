@@ -121,7 +121,7 @@ fn (mut p GVPlayer) new_immutable_image(mut ctx gg.Context, w int, h int, channe
 		num_slices:   1
 		num_mipmaps:  1
 		usage:        .immutable
-		label:        &char("temp".str)
+		label:        &u8(unsafe { nil })
 		data:         data
 	}
 
