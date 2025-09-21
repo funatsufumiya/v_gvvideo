@@ -40,7 +40,7 @@ fn main() {
 	mut errs := []string{}
 	mut start_times := []time.Time{}
 	for path in gv_paths {
-		mut player := gvvideo.new_gvplayer_with_option(path, false, false) or {
+		mut player := gvvideo.new_gvplayer_with_option(path, false, true) or {
 			errs << err.msg()
 			continue
 		}
@@ -110,7 +110,7 @@ fn frame(mut app App) {
 		msg := 'Video ${i+1}: ${video_time:.2f}s | Elapsed: ${elapsed:.2f}s'
 		app.gg.draw_text_def(col * w, row * h + 16, msg)
 	}
-	app.gg.draw_text_def(10, 10, 'Async: $app.async')
+	app.gg.draw_text_def(10, 10, 'Async: ${app.players[0].is_async()}')
 
 	app.gg.end()
 }

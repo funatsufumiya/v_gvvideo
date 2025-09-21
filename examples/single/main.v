@@ -90,7 +90,7 @@ fn frame(mut app App) {
 	app.player.draw(mut app.gg, tx, ty, w, h)
 
 	// app.gg.draw_text_def(10, 10, 'Async: $app.async (A key to toggle)')
-	app.gg.draw_text_def(10, 10, 'Async: $app.async')
+	app.gg.draw_text_def(10, 10, 'Async: ${app.player.is_async()}')
 	video_time := app.player.current_time()
 	elapsed := f32((time.now() - app.start_time).nanoseconds()) / 1000_000_000.0
 	app.gg.draw_text_def(10, 30, 'VideoTime: ${video_time:.2f}s | Elapsed: ${elapsed:.2f}s')

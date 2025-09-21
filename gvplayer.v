@@ -29,10 +29,11 @@ mut:
 	last_frame_id u32
 	last_frame_time f64
 	mutex         &sync.Mutex
+	immutable_sampler &gfx.Sampler = unsafe { nil }
 }
 
 pub fn new_gvplayer(path string) !GVPlayer {
-	return new_gvplayer_with_option(path, false, false)
+	return new_gvplayer_with_option(path, false, true)
 }
 
 pub fn new_gvplayer_with_option(path string, async bool, use_compressed bool) !GVPlayer {
@@ -53,6 +54,10 @@ pub fn new_gvplayer_with_option(path string, async bool, use_compressed bool) !G
 		stop_ch: chan bool{}
 		mutex: sync.new_mutex()
 	}
+}
+
+pub fn (p &GVPlayer) is_async() bool {
+	return p.async
 }
 
 pub fn (p &GVPlayer) width() int {
@@ -103,7 +108,7 @@ pub fn (mut p GVPlayer) seek(to f64) {
 // 	gfx.update_image(img.simg, &data)
 // }
 
-fn new_imutable_image(mut ctx gg.Context, w int, h int, channels int, buf &u8, buf_len usize, sicfg gg.StreamingImageConfig) int {
+fn (mut p GVPlayer) new_immutable_image(mut ctx gg.Context, w int, h int, channels int, buf &u8, buf_len usize, sicfg gg.StreamingImageConfig) gg.Image {
 	mut data := C.sg_image_data {}
 	data.subimage[0][0] = gfx.Range{
 		ptr:  buf
@@ -120,16 +125,22 @@ fn new_imutable_image(mut ctx gg.Context, w int, h int, channels int, buf &u8, b
 		data:         data
 	}
 
-	smp_desc := gfx.SamplerDesc{
-		wrap_u:     sicfg.wrap_u // SAMPLER
-		wrap_v:     sicfg.wrap_v
-		min_filter: sicfg.min_filter
-		mag_filter: sicfg.mag_filter
+	if unsafe { p.immutable_sampler == nil } {
+		smp_desc := gfx.SamplerDesc{
+			wrap_u:     sicfg.wrap_u // SAMPLER
+			wrap_v:     sicfg.wrap_v
+			min_filter: sicfg.min_filter
+			mag_filter: sicfg.mag_filter
+		}
+		
+		sampler := gfx.make_sampler(&smp_desc)
+		p.immutable_sampler = &sampler
 	}
+
 
 	img := gg.Image{
 		simg: gfx.make_image(&img_desc)
-		ssmp: gfx.make_sampler(&smp_desc)
+		ssmp: *p.immutable_sampler
 		width: w
 		height: h
 		nr_channels: channels
@@ -143,8 +154,12 @@ fn new_imutable_image(mut ctx gg.Context, w int, h int, channels int, buf &u8, b
 	// img.nr_channels = channels // 4 bytes per pixel for .rgba8, see pixel_format
 	// img.simg_ok = true
 	// img.ok = true
-	img_idx := ctx.cache_image(img)
-	return img_idx
+
+	// img_idx := ctx.cache_image(img)
+	ctx.cache_image(img)
+	// return img_idx
+
+	return img
 }
 
 pub fn (mut p GVPlayer) update() ! {
@@ -244,37 +259,41 @@ pub fn (p &GVPlayer) get_pixel_format() gfx.PixelFormat {
 
 pub fn (mut p GVPlayer) draw(mut ctx gg.Context, x int, y int, w int, h int) {
 	p.mutex.lock()
-	if p.frame_image == 0 {
-		if p.use_compressed {
-			p.frame_image = new_imutable_image(
-				mut ctx, int(p.video.header.width), int(p.video.header.height), 4,
-				p.frame_buf.data, usize(p.frame_buf.len),
-				gg.StreamingImageConfig{
-					pixel_format: p.get_pixel_format()
-					// pixel_format: .rgba8
-				}
-			)
-			// println("pixel_format: ${p.get_pixel_format()}")
-			// ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
+	if p.use_compressed {
+		image := p.new_immutable_image(
+			mut ctx, int(p.video.header.width), int(p.video.header.height), 4,
+			p.frame_buf.data, usize(p.frame_buf.len),
+			gg.StreamingImageConfig{
+				pixel_format: p.get_pixel_format()
+				// pixel_format: .rgba8
+			}
+		)
 
-		}else {
+		ctx.draw_image(x, y, w, h, image)
+
+		// println("image.id: ${image.id}")
+
+		ctx.remove_cached_image_by_idx(image.id)
+		// gfx.destroy_image(image.simg)
+		// gfx.destroy_sampler(image.ssmp)
+	}else{
+		if p.frame_image == 0 {
 			p.frame_image = ctx.new_streaming_image(int(p.video.header.width), int(p.video.header.height), 4, gg.StreamingImageConfig{
 				// pixel_format: p.get_pixel_format()
 				pixel_format: .rgba8
 			})
 			// println("pixel_format: ${p.get_pixel_format()}")
 			ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
-		}
-	} else {
-		if p.use_compressed {
-
-		}else{
+		} else {
 			ctx.update_pixel_data(p.frame_image, p.frame_buf.data)
 		}
+
+		ctx.draw_image_by_id(x, y, w, h, p.frame_image)
 	}
-	p.mutex.unlock()
+
 	// println("p.frame_image: ${p.frame_image}")
-	ctx.draw_image_by_id(x, y, w, h, p.frame_image)
+
+	p.mutex.unlock()
 }
 
 pub fn (mut p GVPlayer) async_update_loop() {
