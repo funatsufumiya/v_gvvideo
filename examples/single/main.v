@@ -28,7 +28,7 @@ fn main() {
 	} else {
 		println('[INFO] Playing the default GV video. You can specify a .gv file as an argument.')
 	}
-	mut player := gvvideo.new_gvplayer_with_option(gv_path, true) or {
+	mut player := gvvideo.new_gvplayer_with_option(gv_path, true, false) or {
 		panic('Failed to load GV: '+err.msg())
 	}
 	player.set_loop(true)
@@ -46,23 +46,23 @@ fn main() {
 		create_window: true
 		window_title: 'GV Video (V+gg Demo)'
 		frame_fn: frame
-		keydown_fn: on_keydown
+		// keydown_fn: on_keydown
 		user_data: app
 	)
 	app.gg.run()
 }
 
-fn on_keydown(keycode gg.KeyCode, modifier gg.Modifier, mut app App) {
-	if keycode == .a {
-		app.toggle_async()
-	}
-}
+// fn on_keydown(keycode gg.KeyCode, modifier gg.Modifier, mut app App) {
+// 	if keycode == .a {
+// 		app.toggle_async()
+// 	}
+// }
 
-fn (mut app App) toggle_async() {
-	app.async = !app.async
-	app.player.set_async(app.async)
-	app.start_time = time.now()
-}
+// fn (mut app App) toggle_async() {
+// 	app.async = !app.async
+// 	app.player.set_async(app.async)
+// 	app.start_time = time.now()
+// }
 
 fn frame(mut app App) {
 	app.gg.begin()
@@ -91,7 +91,8 @@ fn frame(mut app App) {
 
 	app.player.draw(mut app.gg, tx, ty, w, h)
 
-	app.gg.draw_text_def(10, 10, 'Async: $app.async (A key to toggle)')
+	// app.gg.draw_text_def(10, 10, 'Async: $app.async (A key to toggle)')
+	app.gg.draw_text_def(10, 10, 'Async: $app.async')
 	video_time := app.player.current_time()
 	elapsed := f32((time.now() - app.start_time).nanoseconds()) / 1000_000_000.0
 	app.gg.draw_text_def(10, 30, 'VideoTime: ${video_time:.2f}s | Elapsed: ${elapsed:.2f}s')

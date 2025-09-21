@@ -21,6 +21,7 @@ mut:
 	seek_time     f64
 	looping       bool
 	async         bool
+	use_compressed bool
 	is_async_running bool
 	frame_ch      chan []u8
 	stop_ch       chan bool
@@ -29,10 +30,10 @@ mut:
 }
 
 pub fn new_gvplayer(path string) !GVPlayer {
-	return new_gvplayer_with_option(path, true)
+	return new_gvplayer_with_option(path, true, false)
 }
 
-pub fn new_gvplayer_with_option(path string, async bool) !GVPlayer {
+pub fn new_gvplayer_with_option(path string, async bool, use_compressed bool) !GVPlayer {
 	mut video := gvvideo.load_gvvideo(path)!
 	width := int(video.header.width)
 	height := int(video.header.height)
@@ -45,6 +46,7 @@ pub fn new_gvplayer_with_option(path string, async bool) !GVPlayer {
 		state: .stopped
 		looping: false
 		async: async
+		use_compressed: use_compressed
 		frame_ch: chan []u8{cap: 1}
 		stop_ch: chan bool{}
 	}
@@ -138,25 +140,25 @@ pub fn (p &GVPlayer) current_time() f64 {
     return p.last_frame_time / 1000.0
 }
 
-pub fn (mut p GVPlayer) set_async(async bool) {
-	if p.async == async {
-		return
-	}
-	p.async = async
-	if async {
-		if !p.is_async_running {
-			p.is_async_running = true
-			if p.state == .playing {
-				go p.async_update_loop()
-			}
-		}
-	} else {
-		if p.is_async_running {
-			p.stop_ch <- true
-			p.is_async_running = false
-		}
-	}
-}
+// pub fn (mut p GVPlayer) set_async(async bool) {
+// 	if p.async == async {
+// 		return
+// 	}
+// 	p.async = async
+// 	if async {
+// 		if !p.is_async_running {
+// 			p.is_async_running = true
+// 			if p.state == .playing {
+// 				go p.async_update_loop()
+// 			}
+// 		}
+// 	} else {
+// 		if p.is_async_running {
+// 			p.stop_ch <- true
+// 			p.is_async_running = false
+// 		}
+// 	}
+// }
 
 pub fn (mut p GVPlayer) set_loop(b bool) {
 	p.looping = b
