@@ -2,11 +2,11 @@
 
 ![docs/screenshot.png](docs/screenshot.png)
 
-GV Video ([Extreme Gpu Friendly Video Format](https://github.com/Ushio/ofxExtremeGpuVideo)) Decoder for V-lang 
+GV Video ([Extreme Gpu Friendly Video Format](https://github.com/Ushio/ofxExtremeGpuVideo)) decoder and player for V-lang 
 
 Compressed texture GPU streaming is supported (DXT1/DXT3/DXT5). You can also use alpha channel (opacity).
 
-Ported from [go-gv-video](https://github.com/funatsufumiya/go-gv-video/)
+Ported from [go-gv-video](https://github.com/funatsufumiya/go-gv-video/) and [ebiten_gvvideo](https://github.com/funatsufumiya/ebiten_gvvideo/).
 
 > [!WARNING]
 > V port was almost done by GitHub Copilot. Use with care.
