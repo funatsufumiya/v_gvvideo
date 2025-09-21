@@ -9,8 +9,6 @@ import gvvideo
 const win_width = 800
 const win_height = 600
 
-// TODO: async
-
 struct App {
 mut:
 	gg         &gg.Context = unsafe { nil }
